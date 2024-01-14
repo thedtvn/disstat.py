@@ -5,9 +5,6 @@ version = ''
 with open('./disstat/__init__.py') as f:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
 
-requirements = []
-with open('./req.txt') as f:
-    requirements = f.read().splitlines()
 
 setup(name='disstat.py',
       version=version,
