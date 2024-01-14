@@ -33,7 +33,6 @@ class Disstat:
         """
         self.bot = bot
         self.key = key
-        self.bot_id = self.bot.user.id
         self.is_sharded = isinstance(bot, discord.AutoShardedClient)
         self.previous_bandwidth: int = psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
 
@@ -48,7 +47,7 @@ class Disstat:
             DisstatError: If retrieving bot information fails.
         """
         async with aiohttp.ClientSession(base_url=self.base_url) as s:
-            async with s.get(f"/v1/bot/{bot_id or self.bot_id}", headers={"Authorization": self.key}) as r:
+            async with s.get(f"/v1/bot/{bot_id or self.bot.user.id}", headers={"Authorization": self.key}) as r:
                 if r.status != 200:
                     raise DisstatError(f"Disstat getting bot info failed", r.status)
                 return await r.json()
@@ -121,7 +120,7 @@ class Disstat:
             self.custom_queue.append(data)
             return
         async with aiohttp.ClientSession(base_url=self.base_url) as s:
-            async with s.post(f"/v1/bot/{self.bot_id}/custom", json=data, headers={"Authorization": self.key}) as r:
+            async with s.post(f"/v1/bot/{self.bot.user.id}/custom", json=data, headers={"Authorization": self.key}) as r:
                 if r.status != 200:
                     raise DisstatError(f"Disstat posting custom failed", r.status)
 
@@ -152,7 +151,9 @@ class Disstat:
 
             data_post["cpu"] = int(psutil.cpu_percent())
 
-            data_post["ramUsage"] = psutil.virtual_memory().active
+            data_post["ramUsage"] = psutil.virtual_memory().used
+
+            data_post["ramTotal"] = psutil.virtual_memory().total
 
             data_post["apiPing"] = int(self.bot.latency * 1000)
 
@@ -172,7 +173,7 @@ class Disstat:
             raise TypeError("must be of dict")
 
         async with aiohttp.ClientSession(base_url=self.base_url) as s:
-            async with s.post(f"/v1/bot/{self.bot_id}", json=data, headers={"Authorization": self.key}) as r:
+            async with s.post(f"/v1/bot/{self.bot.user.id}", json=data_post, headers={"Authorization": self.key}) as r:
                 if r.status != 204:
                     raise DisstatError(f"Disstat posting stat failed", r.status)
 
