@@ -210,4 +210,4 @@ class Disstat:
             self.task.cancel()
             self.task = None
         else:
-            logging.warning("Disstat loop is not running")\
+            logging.warning("Disstat loop is not running")
