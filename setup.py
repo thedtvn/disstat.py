@@ -12,7 +12,7 @@ setup(name='disstat.py',
       long_description_content_type='text/markdown',
       license='Apache License 2.0',
       packages=['disstat'],
-      install_requires=["aiohttp"
+      install_requires=["aiohttp",
                         "psutil",
                         "setuptools",
                         "discord"],
