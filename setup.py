@@ -17,6 +17,7 @@ setup(name='disstat.py',
       license='Apache License 2.0',
       packages=['disstat'],
       install_requires=requirements,
+      include_package_data=True,
       author='The DT',
       url='https://github.com/thedtvn/disstat.py',
       description='disstat.py is a python library for DisStat'
