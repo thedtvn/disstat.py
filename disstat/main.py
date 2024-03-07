@@ -151,7 +151,7 @@ class Disstat:
 
         async with aiohttp.ClientSession(base_url=self.base_url) as s:
             async with s.post(f"/api/bots/{self.bot.user.id}/stats", json=data_post, headers={"Authorization": self.key}) as r:
-                if r.status != 204:
+                if r.ok:
                     raise DisstatError(f"Disstat posting stat failed", r.status)
 
     async def __loop(self):
