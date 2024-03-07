@@ -16,9 +16,10 @@ class DisstatError(Exception):
 
 
 class Disstat:
-    base_url = f"https://disstat-api.tomatenkuchen.com"
+    base_url = f"https://statcord.com"
     task = None
     custom_queue = []
+    commands = {}
 
     def __init__(self, bot: Union[discord.Client, discord.AutoShardedClient], key: str):
         """
@@ -27,7 +28,6 @@ class Disstat:
         Args:
             bot (Union[discord.Client, discord.AutoShardedClient]): The bot instance.
             key (str): The key for the API.
-
         Returns:
             None
         """
@@ -36,29 +36,11 @@ class Disstat:
         self.is_sharded = isinstance(bot, discord.AutoShardedClient)
         self.previous_bandwidth: int = psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
 
-    async def get_bot_info(self, bot_id: Union[int, str] = None):
-        """
-        Retrieves information about a bot using the bot ID.
-        Args:
-            bot_id (Union[int, str], optional): The ID of the bot to retrieve information for. If not provided, the ID of the bot associated with the instance will be used. Defaults to None.
-        Returns:
-            dict: A dictionary containing the bot information.
-        Raises:
-            DisstatError: If retrieving bot information fails.
-        """
-        async with aiohttp.ClientSession(base_url=self.base_url) as s:
-            async with s.get(f"/v1/bot/{bot_id or self.bot.user.id}", headers={"Authorization": self.key}) as r:
-                if r.status != 200:
-                    raise DisstatError(f"Disstat getting bot info failed", r.status)
-                return await r.json()
-
-    async def post_command_raw(self, command_name: str, user_id: int = 0, guild_id: int = 0):
+    async def post_command_raw(self, command_name: str):
         """
         This function posts a raw command to the API.
         Args:
             command_name (str): The name of the command.
-            user_id (int, optional): The ID of the user. Defaults to 0.
-            guild_id (int, optional): The ID of the guild. Defaults to 0.
         Raises:
             ValueError: If the command_name is empty.
             DisstatError: If the request to post custom data fails.
@@ -67,7 +49,10 @@ class Disstat:
         """
         if not command_name.strip():
             raise ValueError("command_name cannot be empty")
-        await self.post_custom("command", command_name, user_id, guild_id)
+        if command_name not in self.commands:
+            self.commands[command_name] = 1
+        else:
+            self.commands[command_name] += 1
 
     async def post_command(self, ctx: Union[discord.Interaction, commands.Context]):
         """
@@ -75,7 +60,6 @@ class Disstat:
 
         Args:
             ctx (Union[discord.Interaction, commands.Context]): The context of the command.
-
         Raises:
             ValueError: If ctx is not an Interaction or Context.
             ValueError: If ctx is a Command Interaction without a command.
@@ -89,40 +73,31 @@ class Disstat:
             if ctx.command is None and ctx.type == discord.InteractionType.application_command:
                 raise ValueError("ctx must be an Command Interaction")
         command_name = ctx.command.name
-        guild_id = ctx.guild.id if ctx.guild is not None else 0
-        user_id = ctx.author.id if isinstance(ctx, commands.Context) else ctx.user.id
-        await self.post_command_raw(command_name, user_id, guild_id)
-
-    async def post_custom(self, graph_type: str, value1: Union[int, str] = 0, value2: Union[int, str] = 0,
-                          value3: Union[int, str] = 0):
+        await self.post_command_raw(command_name)
+        
+        
+    async def custom_graph(self, id_name: str, data: dict):
         """
         This function posts custom data to the API.
         Args:
-            graph_type (str): The type of graph to post the custom data to.
-            value1 (int, optional): The first value to post. Defaults to 0.
-            value2 (int, optional): The second value to post. Defaults to 0.
-            value3 (int, optional): The third value to post. Defaults to 0.
+            id_name (str): The type of graph to post the custom data to.
+            data (dict): Key-value pairs of data.
         Raises:
             ValueError: If the graph_type is empty.
-            DisstatError: If the request to post custom data fails.
         Returns:
             None
         """
-        if not graph_type.strip():
-            raise ValueError("graph_type cannot be empty")
+        if not id_name.strip():
+            raise ValueError("id_name cannot be empty")
         data = {
-            "type": graph_type,
-            "value1": value1,
-            "value2": value2,
-            "value3": value3
+            "id": id_name,
+            "data": data
         }
-        if self.task is not None:
-            self.custom_queue.append(data)
-            return
-        async with aiohttp.ClientSession(base_url=self.base_url) as s:
-            async with s.post(f"/v1/bot/{self.bot.user.id}/custom", json=data, headers={"Authorization": self.key}) as r:
-                if r.status != 200:
-                    raise DisstatError(f"Disstat posting custom failed", r.status)
+        for k, i in enumerate(self.custom_queue):
+            if i["id"] == id_name:
+                self.custom_queue[i]["data"].extend(data["data"])
+                return
+        self.custom_queue.append(data)
 
     async def post_stat(self, data: dict = None):
         """
@@ -130,12 +105,10 @@ class Disstat:
 
         Args:
             data (dict): The data to be posted. Default is None.
-
         Raises:
             ValueError: If the data dictionary is empty.
             TypeError: If the data is not of type dict.
             Exception: If the API call fails.
-
         Returns:
             None
         """
@@ -143,27 +116,31 @@ class Disstat:
         data_post = {}
         if data is None:
             if self.is_sharded:
-                data_post["shards"] = self.bot.shard_count
-
-            current_bandwidth = psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
-            data_post["bandwidth"] = current_bandwidth - self.previous_bandwidth
-            self.previous_bandwidth = current_bandwidth
-
-            data_post["cpu"] = int(psutil.cpu_percent())
+                data_post["shardCount"] = self.bot.shard_count
+                
+            
+            # current_bandwidth = psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
+            # data_post["bandwidth"] = current_bandwidth - self.previous_bandwidth
+            # self.previous_bandwidth = current_bandwidth
+            
+            data_post["cpuUsage"] = int(psutil.cpu_percent())
 
             data_post["ramUsage"] = psutil.virtual_memory().used
 
-            data_post["ramTotal"] = psutil.virtual_memory().total
+            data_post["totalRam"] = psutil.virtual_memory().total
 
-            data_post["apiPing"] = int(self.bot.latency * 1000)
+            data_post["members"] = len(self.bot.get_all_members())
+            
+            data_post["userCount"] = len(self.bot.users)
 
-            data_post["users"] = len(self.bot.users)
-
-            data_post["guilds"] = len(self.bot.guilds)
+            data_post["guildCount"] = len(self.bot.guilds)
 
             if self.custom_queue:
-                data_post["custom"] = self.custom_queue
+                data_post["customCharts"] = self.custom_queue
                 self.custom_queue = []
+                
+            if self.commands:
+                data_post["commands"] = [{"name": k, "count": v} for k, v in self.commands.items()]
         else:
             data_post = data
 
@@ -173,7 +150,7 @@ class Disstat:
             raise TypeError("must be of dict")
 
         async with aiohttp.ClientSession(base_url=self.base_url) as s:
-            async with s.post(f"/v1/bot/{self.bot.user.id}", json=data_post, headers={"Authorization": self.key}) as r:
+            async with s.post(f"/api/bots/{self.bot.user.id}/stats", json=data_post, headers={"Authorization": self.key}) as r:
                 if r.status != 204:
                     raise DisstatError(f"Disstat posting stat failed", r.status)
 

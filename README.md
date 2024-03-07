@@ -1,8 +1,8 @@
 # DisStat.py
-The unofficial pypi package for [DisStat](https://disstat.pages.dev) -
-DisStat itself is [open source](https://github.com/DisStat/DisStat) btw!
+The unofficial pypi package for [DisStat](https://statcord.com/) -
+DisStat itself is [open source](https://github.com/Statcord/DisStat) btw!
 
-You can find the public HTTP api docs on https://disstat.pages.dev/docs if you dont want to use an api wrapper.
+You can find the public HTTP api docs on https://statcord.com/docs if you dont want to use an api wrapper.
 
 # Installation
 ```bash
