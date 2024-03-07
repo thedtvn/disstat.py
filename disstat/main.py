@@ -19,7 +19,7 @@ class Disstat:
     base_url = f"https://statcord.com"
     task = None
     custom_queue = []
-    commands = {}
+    commands_count = {}
 
     def __init__(self, bot: Union[discord.Client, discord.AutoShardedClient], key: str):
         """
@@ -49,10 +49,10 @@ class Disstat:
         """
         if not command_name.strip():
             raise ValueError("command_name cannot be empty")
-        if command_name not in self.commands:
-            self.commands[command_name] = 1
+        if command_name not in self.commands_count:
+            self.commands_count[command_name] = 1
         else:
-            self.commands[command_name] += 1
+            self.commands_count[command_name] += 1
 
     async def post_command(self, ctx: Union[discord.Interaction, commands.Context]):
         """
@@ -139,8 +139,8 @@ class Disstat:
                 data_post["customCharts"] = self.custom_queue
                 self.custom_queue = []
                 
-            if self.commands:
-                data_post["commands"] = [{"name": k, "count": v} for k, v in self.commands.items()]
+            if self.commands_count:
+                data_post["commands"] = [{"name": k, "count": v} for k, v in self.commands_count.items()]
         else:
             data_post = data
 
