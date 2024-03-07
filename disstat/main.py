@@ -129,7 +129,7 @@ class Disstat:
 
             data_post["totalRam"] = psutil.virtual_memory().total
 
-            data_post["members"] = len(self.bot.get_all_members())
+            data_post["members"] = len(list(self.bot.get_all_members()))
             
             data_post["userCount"] = len(self.bot.users)
 
